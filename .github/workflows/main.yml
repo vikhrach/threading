@@ -1,0 +1,67 @@
+name: scoring CI/CD 
+on:
+  push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy: 
+      matrix:
+        python-version: [3.12]
+    services:
+      memcached1:
+        image: memcached:latest
+        ports:
+          - 33013:11211
+        options: --memory=64m
+      memcached2:
+        image: memcached:latest
+        ports:
+          - 33014:11211
+        options: --memory=64m
+      memcached3:
+        image: memcached:latest
+        ports:
+          - 33015:11211
+        options: --memory=64m
+      memcached4:
+        image: memcached:latest
+        ports:
+          - 33016:11211
+        options: --memory=64m
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Verify Memcached connections
+        run: |
+          echo "Testing Memcached connections..."
+          echo "Installing telnet for testing..."
+          sudo apt-get update && sudo apt-get install -y telnet
+          
+          echo "Testing port 33013..."
+          (echo "stats"; sleep 1) | telnet localhost 33013 | grep "STAT"
+          
+          echo "Testing port 33014..."
+          (echo "stats"; sleep 1) | telnet localhost 33014 | grep "STAT"
+          
+          echo "Testing port 33015..."
+          (echo "stats"; sleep 1) | telnet localhost 33015 | grep "STAT"
+          
+          echo "Testing port 33016..."
+          (echo "stats"; sleep 1) | telnet localhost 33016 | grep "STAT"
+      - name: Run image
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: 1.8.4
+      - name: Install dependencies
+        run: poetry install
+      - name: Run linter flake8
+        run: |
+          poetry run flake8 --max-line-length=120 --exclude=*_pb2.py
+      - name: Run app
+        run: |
+          memc_load.py
+
+      
+      
